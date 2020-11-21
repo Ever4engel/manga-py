@@ -1,13 +1,12 @@
 import unittest
 from pathlib import Path
 from .base import root_path
-from manga_py.provider import Provider
 from manga_py.crypt import AcQqComCrypt
 from manga_py.crypt import KissMangaComCrypt
 from manga_py.crypt import MangaRockComCrypt
 from manga_py.crypt import ManhuaGuiComCrypt
 from manga_py.crypt import MangaGoMe
-from manga_py.image import Image
+from manga_py.manga_image import MangaImage
 import json
 import re
 
@@ -21,20 +20,14 @@ class TestCrypt(unittest.TestCase):
     ]
     _mangago_data = 'b/fewbQPsnakoTXxGjVeyvnp1IKTwZlqQJmozPy7EDIwDQP0M+OR+dhAvBSEBk0haWgKUgCELhnL1sDwJFKoJRPD3BPuEScf+m3wIHiDDySKmoG0yuM6D0nYKf3+mRPVeLWbPqEUEs9js8r/rZkMUpg8QBxL2LW9KWj5TFe5jbDieK1k0jKmnlLof+riZ5Lii3ogXBn3LkQ0OjuCEo3mH2495DfPuanMimtK52UCJIe1Slac4VGFmcfMxWggoTVwmxqlO3YvUHS8WvhUtXMSyy5i5PbuFCZ1RP1T7+RxtBr4xi4olxQBi84Lwk9LN9MnIXl3o3r5Jb2Aq8hBiDfG9gpAye+N0SVnONY2xjo/gEo/njWHEqb8Wggr6kuwUdjqtMQA8zOoEmLGGs4zgeddSR5SsE0WfSxc9gXQwUS3Dlz6vfWTSOPacqKonzT7ggG7cZOoR7gHmEUjjKPhumNnxCHLa0uwTdFpBg38c+72j5dpOqLRld6PsvOJalph2Y79'
 
-    @property
-    def _provider(self):
-        provider = Provider()
-        provider._params['url'] = 'http://example.org'
-        return provider
-
-    def test_ac_qq_com(self):
-        lib = AcQqComCrypt(self._provider)
-        'data from ac.qq.com/ComicView/index/id/536435/cid/274'
-        self.assertIsNotNone(lib.decode(self._ac_qq_data).get('comic', None))
-
-    def test_ac_qq_com_none(self):
-        lib = AcQqComCrypt(self._provider)
-        self.assertIsNone(lib.decode(self._ac_qq_data[5:]).get('comic', None))
+    # def test_ac_qq_com(self):
+    #     lib = AcQqComCrypt()
+    #     'data from ac.qq.com/ComicView/index/id/536435/cid/274'
+    #     self.assertIsInstance(lib.decode(self._ac_qq_data[5:]), list)
+    #
+    # def test_ac_qq_com_none(self):
+    #     lib = AcQqComCrypt()
+    #     self.assertNotIsInstance(lib.decode(self._ac_qq_data[5:50]), list)
 
     def test_kissmanga(self):
         lib = KissMangaComCrypt()
@@ -50,13 +43,13 @@ class TestCrypt(unittest.TestCase):
         path_cr = str(Path(root_path).joinpath('files', 'manga_rock_com.mri'))
         path_test = str(Path(root_path).joinpath('temp', 'manga_rock_com'))
 
-        self.assertIsNone(Image.real_extension(path_cr))
+        self.assertIsNone(MangaImage.real_extension(path_cr))
 
         with open(path_cr, 'rb') as r:
             with open(path_test, 'wb') as w:
                 w.write(crypt.decrypt(r.read()))
 
-        self.assertIsNotNone(Image.real_extension(path_test))
+        self.assertIsNotNone(MangaImage.real_extension(path_test))
 
     def test_manhuagui_com(self):
         lib = ManhuaGuiComCrypt()

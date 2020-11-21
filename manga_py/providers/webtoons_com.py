@@ -8,7 +8,7 @@ class WebToonsCom(Provider, Std):
     __next_page_urls = None
 
     def get_archive_name(self) -> str:
-        i = self.re.search(r'\.com%s%s' % (
+        i = self.re.search(r'\.\w{2,7}%s%s' % (
             r'(?:/|%2F)[^/%]+' * 3,
             r'(?:/|%2F)([^/%]+)',
         ), self.chapter)
@@ -22,9 +22,9 @@ class WebToonsCom(Provider, Std):
 
     def get_manga_name(self) -> str:
         self.__titleNo = self._get_name(r'title_no=(\d+)')
-        name = self._get_name(r'\.com/([^/]+/[^/]+/[^/]+)')
+        name = self._get_name(r'\.\w{2,7}/([^/]+/[^/]+/[^/]+)')
         self.__mainUrl = '{}/{}/list?title_no={}'.format(self.domain, name, self.__titleNo)
-        return self._get_name(r'\.com/[^/]+/[^/]+/([^/]+)')
+        return self._get_name(r'\.\w{2,7}/[^/]+/[^/]+/([^/]+)')
 
     def _chapters(self, content):
         return self._elements('#_listUl li > a', content)
@@ -49,7 +49,7 @@ class WebToonsCom(Provider, Std):
             self.get_next_page_urls(_content)
 
     def get_chapters(self):
-        print('Parse chapters. Please, wait')
+        self.log('Parse chapters. Please, wait')
         self.__next_page_urls = []
         chapters = self._chapters(self.content)
         n = self.http().normalize_uri
@@ -71,9 +71,15 @@ class WebToonsCom(Provider, Std):
         img = self.html_fromstring(self.content, '#content > .detail_bg', 0)
         return self.parse_background(img)
 
-    def book_meta(self) -> dict:
-        # todo meta
-        pass
+    def prepare_cookies(self):
+        self.http().cookies['locale'] = 'en'
+        self.http().cookies['needGDPR'] = 'false'
+        self.http().cookies['hadSavedCookie'] = 'true'
+        self.http().cookies['ageGatePass'] = 'true'
+        self.http().cookies['timezoneOffset'] = '+1'
+
+    def allow_auto_change_url(self):
+        return False
 
 
 main = WebToonsCom

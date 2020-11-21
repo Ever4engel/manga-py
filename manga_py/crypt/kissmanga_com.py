@@ -1,4 +1,5 @@
 from .base_lib import BaseLib
+from logging import error
 
 
 class KissMangaComCrypt(BaseLib):
@@ -11,5 +12,5 @@ class KissMangaComCrypt(BaseLib):
         try:
             return self.decrypt_aes(iv, key, data)
         except Exception as e:
-            print(e)
+            error(e)
             return False

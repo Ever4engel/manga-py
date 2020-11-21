@@ -1,5 +1,6 @@
 from manga_py.provider import Provider
-from .helpers.std import Std, Http2
+from .helpers.std import Std
+from .helpers._http2 import Http2
 
 
 class MangaFreakNet(Provider, Std):
@@ -21,21 +22,17 @@ class MangaFreakNet(Provider, Std):
         return [(i.get('download'), i.get('href')) for i in items]
 
     def loop_chapters(self):
-        items = self._storage['chapters'][::-1]
+        items = self.chapters[::-1]
         Http2(self).download_archives([i[1] for i in items])
 
     def get_files(self):
         pass
 
     def prepare_cookies(self):
-        self.cf_protect(self.get_url())
+        self.cf_scrape(self.get_url())
 
     def get_cover(self) -> str:
         return self._cover_from_content('.manga_series_image img')
-
-    def book_meta(self) -> dict:
-        # todo meta
-        pass
 
     def chapter_for_json(self):
         return self.chapter[1]

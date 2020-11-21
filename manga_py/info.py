@@ -1,6 +1,7 @@
 from argparse import Namespace
 from datetime import datetime
 from sys import argv
+from typing import Union
 
 from manga_py import meta
 
@@ -11,7 +12,12 @@ class Info:
     
     {
         'site': 'https://example.org/kumo-desu-ga-nani-ka',
-        'downloader': 'https://github.com/yuru-yuri/manga-py',
+        'downloader': [
+            'https://manga-py.com/manga-py/',
+            'https://github.com/manga-py/manga-py',
+            'https://github.com/yuru-yuri/manga-py',
+            'https://yuru-yuri.github.io/manga-py',
+        ],
         'version': '1.1.4',
         'delta': '0:00:00.003625',
         'start': '2018-06-08 17:22:24.419565',
@@ -54,13 +60,13 @@ class Info:
     def _dt(dt, fmt: str = '%A, %d. %B %Y %H:%M:%S'):
         return dt.strftime(fmt)
 
-    def __init__(self, args: Namespace):  # see manga_py.cli arguments
-        _args = args.__dict__
+    def __init__(self, args: Union[Namespace, dict]):  # see manga_py.cli arguments
+        _args = args.__dict__ if args is not dict else args
         _args['_raw_params'] = ' '.join(argv)
         self._data = {
             'site': args.url,
-            'downloader': meta.__downloader_uri__,
-            'version': meta.__version__,
+            'downloader': meta.repo_url,
+            'version': meta.version,
             'delta': None,
             'init': self._dt(datetime.now()),
             'start': None,

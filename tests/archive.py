@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-from os import path
+from os import path, name as os_name
 from shutil import copyfile
 
 from manga_py import fs
@@ -34,10 +34,6 @@ class TestArchive(unittest.TestCase):
             orig_size += int(fs.file_size(root_path + item[1]))
             arc.add_file(root_path + item[1])
 
-        copyfile(root_path + '/files/archive_test_file', root_path + '/temp/archive_test_file')
-        orig_size += int(fs.file_size(root_path + '/temp/archive_test_file'))
-        arc.add_file(root_path + '/temp/archive_test_file')
-
         copyfile(root_path + '/files/archive_test_image', root_path + '/temp/archive_test_image')
         orig_size += int(fs.file_size(root_path + '/temp/archive_test_image'))
         arc.add_file(root_path + '/temp/archive_test_image')
@@ -53,7 +49,8 @@ class TestArchive(unittest.TestCase):
         self.assertFalse(fs.is_file(root_path + '/temp/archive_test_file'))
 
     def test_home(self):
-        self.assertTrue(fs.get_util_home_path().find('/home/') == 0)
+        if os_name != 'nt':
+            self.assertTrue(fs.get_util_home_path().find('/home/') == 0)
         self.assertTrue(fs.is_dir(fs.get_util_home_path()))
 
     def test_unlink1(self):

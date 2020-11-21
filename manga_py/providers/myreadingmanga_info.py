@@ -11,7 +11,7 @@ class MyReadingMangaInfo(Provider, Std):
         return self._get_content('{}/{}/')
 
     def get_manga_name(self) -> str:
-        return self._get_name(r'\.info/([^/]+)')
+        return self._get_name(r'\.\w{2,7}/([^/]+)')
 
     def get_chapters(self):
         v = [self.get_url()]  # current chapter
@@ -22,7 +22,7 @@ class MyReadingMangaInfo(Provider, Std):
         return v[::-1]
 
     def prepare_cookies(self):
-        self.cf_protect(self.get_url())
+        self.cf_scrape(self.get_url())
 
     def get_files(self):
         selector = '.entry-content div img,.entry-content p img'

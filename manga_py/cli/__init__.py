@@ -1,6 +1,7 @@
 import sys
 from argparse import ArgumentParser
 from getpass import getpass
+from logging import error
 from os import name as os_name
 
 from progressbar import ProgressBar
@@ -34,13 +35,18 @@ class Cli:  # pragma: no cover
                 info=self._info,
             )
         except AttributeError as e:
-            print(e)
-            print('Please check the domain in the table: https://yuru-yuri.github.io/manga-py/')
-            print('Make sure that the URL is correct\n\nTrace:')
+            error('\n'.join([
+                'Please check if your inputed domain is supported by manga-py: ',
+                '- https://manga-py.com/manga-py/#resources-list',
+                '- https://manga-py.github.io/manga-py/#resources-list (alternative)',
+                '- https://yuru-yuri.github.io/manga-py/ (deprecated)',
+                'Make sure that your inputed URL is correct',
+                'Trace:',
+            ]))
             raise e
         self.parser.start()
         self.__progress_bar and self.__progress_bar.value > 0 and self.__progress_bar.finish()
-        self.print(' ')
+        self.args.quiet or self.print(' ')
 
     def __init_progress(self, items_count: int, re_init: bool):
         if re_init or not self.__progress_bar:
@@ -51,31 +57,35 @@ class Cli:  # pragma: no cover
             self.__progress_bar.init()
 
     def progress(self, items_count: int, current_item: int, re_init: bool = False):
-        if not items_count:
+        if not items_count \
+                or self.args.no_progress \
+                or self.args.quiet \
+                or self.args.print_json \
+                or self.args.debug:
             return
-        if not self.args.no_progress and not self.args.print_json:
-            current_val = 0
-            if self.__progress_bar:
-                current_val = self.__progress_bar.value
-            self.__init_progress(items_count, re_init and current_val > 0)
-            self.__progress_bar.update(current_item)
+
+        current_val = 0
+        if self.__progress_bar:
+            current_val = self.__progress_bar.value
+        self.__init_progress(items_count, re_init and current_val > 0)
+        self.__progress_bar.update(current_item)
 
     def print(self, text, **kwargs):
         if os_name == 'nt':
             text = str(text).encode().decode(sys.stdout.encoding, 'ignore')
-        print(text, **kwargs)
+        self.args.quiet or print(text, **kwargs)
 
     def _single_quest(self, variants, title):
-        self.print(title)
+        print(title)
         for v in variants:
-            self.print(v)
+            print(v)
         return input()
 
     def _multiple_quest(self, variants, title):
-        self.print('Accept - blank line + enter')
-        self.print(title)
+        print('Accept - blank line + enter')
+        print(title)
         for v in variants:
-            self.print(v)
+            print(v)
         result = []
         while True:
             _ = input().strip()

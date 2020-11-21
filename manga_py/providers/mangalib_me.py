@@ -5,7 +5,7 @@ from .helpers.std import Std
 class MangaLibMe(Provider, Std):
 
     def get_chapter_index(self) -> str:
-        selector = r'\.me/[^/]+/[^\d]+(\d+)/[^\d]+([^/]+)'
+        selector = r'\.\w{2,7}/[^/]+/[^\d]+(\d+)/[^\d]+([^/]+)'
         idx = self.re.search(selector, self.chapter).groups()
         return '-'.join(idx)
 
@@ -13,21 +13,22 @@ class MangaLibMe(Provider, Std):
         return self._get_content('{}/{}')
 
     def get_manga_name(self) -> str:
-        return self._get_name(r'\.me/([^/]+)')
+        return self._get_name(r'\.\w{2,7}/([^/]+)')
 
     def get_chapters(self):
         return self._elements('.chapters-list .chapter-item__name a')
 
     def get_files(self):
         content = self.http_get(self.chapter)
-        base_url = self.re.search(r'\bimgUrl: *[\'"]([^\'"]+)', content).group(1)
-        images = self.re.search(r'\bpages: *(\[\{.+\}\])', content).group(1)
+        images = self.re.search(r'__pg\s*=\s*(\[.+\])', content).group(1)
+        info = self.re.search(r'__info\s*=\s*(\{.+\})', content).group(1)
         images = self.json.loads(images)
-        imgs = ['https://img2.mangalib.me{}{}'.format(
-            base_url,
-            i.get('page_image'),
-        ) for i in images]
-        return imgs
+        info = self.json.loads(info)
+        _manga = info['img']['url']
+        _s = info['servers']
+        _server = _s.get('fourth', _s.get('compress'))
+
+        return ['{}{}{}'.format(_server, _manga, i['u']) for i in images]
 
     def get_cover(self):
         return self._cover_from_content('img.manga__cover')

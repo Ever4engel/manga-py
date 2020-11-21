@@ -9,16 +9,13 @@ class Request:
     referer = ''
     proxies = None
     allow_webp = True
-    user_agent = '{} {} {} {}'.format(
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        'AppleWebKit/537.36 (KHTML, like Gecko)',
-        'Chrome/60.0.3112.101',
-        'Safari/537.36'
+    user_agent = '{} {}'.format(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:76.0)',
+        'Gecko/20100101 Firefox/76.0'
     )
     default_lang = 'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3'
     cookies = None
     kwargs = None
-    debug = False
     response = None
     _history = None
     allow_send_referer = True
@@ -66,35 +63,14 @@ class Request:
             location = normalize_uri(r.headers['location'], self.__redirect_base_url)
         return proxy, location, method
 
-    def _requests_helper(
-            self, method, url, headers=None, data=None,
-            max_redirects=10, **kwargs
-    ) -> requests.Response:
-        self._prepare_redirect_base_url(url)
-        headers = self.__patch_headers(headers)
-        args = {
-            'url': url,
-            'headers': headers,
-            'data': data,
-        }
-        self.__set_defaults(args, kwargs)
-        self.__set_defaults(args, self._get_kwargs())
-        args.setdefault('allow_redirects', False)
-        r = getattr(requests, method)(**args)
+    def _requests_helper(self, method, url, **kwargs) -> requests.Response:
+        r = requests.request(method, url, **kwargs)
+
+        if len(r.history):
+            for i in r.history:
+                self.__update_cookies(i)
         self.__update_cookies(r)
-        if r.is_redirect and method != 'head':
-            if max_redirects < 1:
-                self.debug and print(self._history)
-                raise AttributeError('Too many redirects')
-            self._history.append(url)
-            proxy, location, method = self.__redirect_helper(r, url, method)
-            if proxy:
-                kwargs['proxies'] = proxy
-            return self._requests_helper(
-                method=method, url=location, headers=headers,
-                data=data, max_redirects=(max_redirects - 1),
-                **kwargs
-            )
+
         return r
 
     @staticmethod
@@ -166,6 +142,6 @@ class Request:
         :param url:
         :return:
         """
-        response = self.requests(url=url, method='head')
+        response = self.requests(url=url, method='get', stream=True)
         response.close()
         return response.cookies

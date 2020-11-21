@@ -1,8 +1,8 @@
-from .rawdevart_com import RawDevArtCom
+from .rawdevart_com_old import RawDevArtComOld
 
 
-class ISekaiScanCom(RawDevArtCom):
-    _chapter_selector = r'/chapter-(\d+(?:-[\w\-]+)?)'
+class ISekaiScanCom(RawDevArtComOld):
+    _chapter_selector = r'/(?:chapter-)?(\d+(?:[\a-zA-Z\.-]*?\d+)?(?:-\w+)?)/'
 
     def get_files(self):
         parser = self.html_fromstring(self.chapter)

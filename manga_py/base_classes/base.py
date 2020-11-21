@@ -1,19 +1,23 @@
-import re
+from logging import warning
 from os import path
-from sys import stderr
+from typing import Optional, List
 
 from lxml.html import HtmlElement
 
 from manga_py.http import Http
-from manga_py.image import Image
+from .params import ProviderParams
 
 
-class Base:
+class Base(ProviderParams):
     _storage = None
     _params = None
     _image_params = None
     _http_kwargs = None
     __http = None
+    __arguments = None
+    chapter_id = 0
+    quiet = False
+    original_url = None
 
     def __init__(self):
 
@@ -38,7 +42,7 @@ class Base:
         }
         self._http_kwargs = {}
 
-    def _archive_type(self):
+    def _archive_type(self) -> str:
         arc_type = 'zip'
         if self._params['cbz']:
             arc_type = 'cbz'
@@ -46,28 +50,6 @@ class Base:
 
     def get_url(self):
         return self._params['url']
-
-    @property
-    def domain(self) -> str:
-        try:
-            if not self._storage.get('domain_uri', None):
-                self._storage['domain_uri'] = re.search('(https?://[^/]+)', self._params['url']).group(1)
-            return self._storage.get('domain_uri', '')
-        except Exception:
-            print('url is broken!', file=stderr)
-            exit()
-
-    @staticmethod
-    def image_auto_crop(src_path, dest_path=None):
-        image = Image(src_path=src_path)
-        image.crop_auto(dest_path=dest_path)
-        image.close()
-
-    def image_manual_crop(self, src_path, dest_path=None):  # sizes: (left, top, right, bottom)
-        if isinstance(self._image_params['crop'], tuple) != (0, 0, 0, 0):
-            image = Image(src_path=src_path)
-            image.crop_manual_with_offsets(offsets=self._image_params['crop'], dest_path=dest_path)
-            image.close()
 
     def _build_http_params(self, params):
         if params is None:
@@ -98,17 +80,9 @@ class Base:
     def _get_user_agent(self):
         ua_storage = self._storage.get('user_agent', None)
         ua_params = self._params.get('user_agent', None)
-        if self._params.get('cf_protect', False):
+        if self._params.get('cf_scrape', False):
             return ua_storage
         return ua_params
-
-    @property
-    def chapter_id(self):
-        return self._storage.get('current_chapter', 0)
-
-    @chapter_id.setter
-    def chapter_id(self, idx):
-        self._storage['current_chapter'] = idx
 
     @classmethod
     def __normalize_chapters(cls, n, element):
@@ -125,11 +99,9 @@ class Base:
             for i in chapters:
                 url = self.__normalize_chapters(n, i)
                 items.append(url)
+        else:
+            warning('Chapters list empty. Check %s' % self.get_url())
         return items
-
-    @property
-    def chapter(self):
-        return self._storage['chapters'][self.chapter_id]
 
     def get_current_file(self):
         return self._storage['files'][self._storage['current_file']]
@@ -152,3 +124,27 @@ class Base:
     def put_info_json(self, meta):
         # manga_name, url, directory
         pass
+
+    def _fill_arguments(self, arguments: List[str]):
+        know_args = [
+            'login',
+            'password',
+            'language',
+            'translator',
+        ]
+
+        if self.__arguments is None:
+            self.__arguments = {}
+
+        for arg in arguments:
+            key, value = arg.split('=', 1)  # type: str, str
+            if key in know_args:
+                self.__arguments[key] = value
+
+    def arg(self, key: str) -> Optional[str]:
+        if self.__arguments is None:
+            return None
+        return self.__arguments.get(key)
+
+    def allow_auto_change_url(self):
+        return True

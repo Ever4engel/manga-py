@@ -1,14 +1,13 @@
-from requests import get
+import re
+from logging import error
 from time import sleep
+
+from requests import get
 
 
 class Std:
-    _vol_fill = False
-
-    def get_archive_name(self) -> str:
-        idx = self.get_chapter_index()
-        self._vol_fill = True
-        return self.normal_arc_name({'vol': idx.split('-')})
+    _download_cookies = None
+    _download_headers = None
 
     def _elements(self, selector, content=None) -> list:
         if not content:
@@ -31,9 +30,13 @@ class Std:
         return []
 
     @classmethod
-    def _images_helper(cls, parser, selector, attr='src') -> list:
+    def _images_helper(cls, parser, selector, attr='src', alternative_attr='data-src') -> list:
         image = parser.cssselect(selector)
-        return [i.get(attr).strip(' \r\n\t\0') for i in image]
+        images = []
+        for i in image:
+            src = i.get(attr) or i.get(alternative_attr)
+            images.append(src.strip(' \r\n\t\0'))
+        return images
 
     @classmethod
     def _idx_to_x2(cls, idx, default=0) -> list:
@@ -53,10 +56,16 @@ class Std:
     def _get_name(self, selector, url=None) -> str:
         if url is None:
             url = self.get_url()
-        return self.re.search(selector, url).group(1)
+        return re.search(selector, url).group(1)
 
-    def _get_content(self, tpl) -> str:
-        return self.http_get(tpl.format(self.domain, self.manga_name))
+    def _get_content(self, tpl, **kwargs) -> str:
+        try:
+            _kw = kwargs.copy()
+            _kw.setdefault('domain', self.domain)
+            _kw.setdefault('manga_name', self.manga_name)
+            return self.http_get(tpl.format(**_kw))
+        except Exception:
+            return self.http_get(tpl.format(self.domain, self.manga_name))
 
     def _base_cookies(self, url=None):
         if url is None:
@@ -65,74 +74,36 @@ class Std:
         self._storage['cookies'] = cookies.get_dict()
 
     def parse_background(self, image) -> str:
-        selector = r'background.+?url\([\'"]?([^\s]+?)[\'"]?\)'
-        url = self.re.search(selector, image.get('style'))
+        url = re.search(
+            r'background.+?url\([\'"]?([^\s]+?)[\'"]?\)',
+            image.get('style')
+        )
         return self.http().normalize_uri(url.group(1))
-
-    @property
-    def manga_name(self) -> str:
-        name = self._storage.get('manga_name', None)
-        if name is None:
-            name = self.get_manga_name()
-        return name
-
-    def normal_arc_name(self, idx):
-        if isinstance(idx, str):
-            idx = [idx]
-        if isinstance(idx, list):
-            self._vol_fill = True
-            return self.__normal_name_list(idx)
-        if isinstance(idx, dict):
-            return self.__normal_name_dict(idx)
-        raise DeprecationWarning('Wrong arc name type: %s' % type(idx))
-
-    @staticmethod
-    def __fill(var, fmt: str = '-{}'):
-        if isinstance(var, str):
-            var = [var]
-        return (fmt * len(var)).format(*var).lstrip('-')
-
-    def __normal_name_list(self, idx: list):
-        fmt = 'vol_{:0>3}'
-        if len(idx) > 1:
-            fmt += '-{}' * (len(idx) - 1)
-        elif self._vol_fill and self._zero_fill:
-            idx.append('0')
-            fmt += '-{}'
-        return fmt.format(*idx)
-
-    def __normal_name_dict(self, idx: dict):
-        vol = idx.get('vol', None)
-        ch = idx.get('ch', None)
-        result = ''
-        if vol:
-            if isinstance(vol, str):
-                vol = [vol]
-            result = self.__normal_name_list(vol)
-        if ch:
-            result += '-ch_' + self.__fill(ch)
-        if self._with_manga_name:
-            result = '%s-%s' % (self.manga_name, result)
-        return result
 
     def text_content(self, content, selector, idx: int = 0, strip: bool = True):
         doc = self.document_fromstring(content, selector)
         if not doc:
             return None
-        text = doc[idx].text_content()
+        return self.element_text_content(doc[idx], strip)
+
+    def element_text_content(self, element, strip: bool = True):
+        text = element.text_content()
         if strip:
             text = text.strip()
         return text
 
     def _download(self, file_name, url, method):
         # clean file downloader
+        cookies = self._download_cookies or {}
+        headers = self._download_headers or {}
+
         now_try_count = 0
         while now_try_count < 5:
             with open(file_name, 'wb') as out_file:
                 now_try_count += 1
-                response = get(url, timeout=60, allow_redirects=True)
+                response = get(url, timeout=60, allow_redirects=True, headers=headers, cookies=cookies)
                 if response.status_code >= 400:
-                    self.http().debug and print('ERROR! Code {}\nUrl: {}'.format(
+                    error('ERROR! Code {}\nUrl: {}'.format(
                         response.status_code,
                         url,
                     ))
@@ -142,3 +113,11 @@ class Std:
                 response.close()
                 out_file.close()
                 break
+
+    @staticmethod
+    def _test_url(url: str, path: str = None) -> bool:
+        _path = r'https?://.+?\.\w{2,7}'
+        if path is not None:
+            _path += path
+        _re = re.compile(_path)
+        return _re.search(url) is not None

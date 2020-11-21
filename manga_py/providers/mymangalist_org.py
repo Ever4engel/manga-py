@@ -1,5 +1,6 @@
 from manga_py.provider import Provider
-from .helpers.std import Std, Http2
+from .helpers.std import Std
+from .helpers._http2 import Http2
 
 
 class MyMangaListOrg(Provider, Std):
@@ -24,13 +25,13 @@ class MyMangaListOrg(Provider, Std):
 
     def loop_chapters(self):
         http2 = Http2(self)
-        http2.download_archives(self._storage['chapters'])
+        http2.download_archives(self.chapters)
 
     def get_files(self):
         return []
 
     def prepare_cookies(self):
-        self.cf_protect(self.get_url())
+        self.cf_scrape(self.get_url())
 
     def get_cover(self) -> str:
         return self._cover_from_content('img.manga_info_image')
